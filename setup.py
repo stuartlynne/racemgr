@@ -22,7 +22,7 @@ setup(
     name = "startlist",
     packages = ["racemgr",],
     #install_requires = [ "psycopg2", "yattag", "openpyxl", ],
-    install_requires = [ "yattag", "openpyxl", ],
+    install_requires = [ "flask", "websocket_server", "websocket-client", ]
     entry_points = {
         "console_scripts": ['racemgr = racemgr.racemgr:raceMain'],
         },
