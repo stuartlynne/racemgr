@@ -3,6 +3,8 @@ from threading import Thread, Event
 from queue import Queue
 import traceback
 import argparse
+import signal
+from time import sleep
 
 from .threadex import ThreadEx
 from .live import LiveThread
@@ -11,18 +13,26 @@ from .flaskserver import FlaskServer
 
 from .utils import log
 
-StopEvent = Event()
 
 __version__ = "0.2.0"
 
 
-def sigintHandler(signal, frame):
-    log('SIGINT received %s' % (signal,), )
-    StopEvent.set()
-
+StopEvent = Event()
 
 
 def raceMain():
+
+    def sigintHandler(signal, frame):
+        log('SIGINT received %s' % (signal,), )
+        StopEvent.set()
+
+
+    signal.signal(signal.SIGINT, lambda signal, frame: sigintHandler(signal, frame))
+    #log('RaceMgr version %s' % __version__)
+    #while True:
+    #    log('Sleeping 2')
+    #    sleep(2)
+
     parser = argparse.ArgumentParser(description="Export start lists for a RaceDB competition.")
     parser.add_argument('--crossmgr', type=str, default='localhost', help='CrossMgr host')
     parser.add_argument('--port', type=int, default=11001, help='Flask port')
@@ -49,7 +59,13 @@ def raceMain():
 
     [v.start() for v in threads]
 
-    StopEvent.wait()
+    log("Threads started, waiting for StopEvent")
+    try:
+        StopEvent.wait()
+    except KeyboardInterrupt:
+        log("KeyboardInterrupt, stopping threads")
+        pass
+    log("StopEvent received, stopping threads")
 
     flaskserver.shutdown()
 

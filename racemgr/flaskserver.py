@@ -63,7 +63,7 @@ class FlaskServer(ThreadEx):
         log('FlaskSever.Stopping server', )
         self.server.shutdown()
         self.server.server_close()
-        self.ctx.pop()
+        #self.ctx.pop()
 
 def main():
 

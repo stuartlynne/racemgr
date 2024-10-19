@@ -412,6 +412,11 @@ class SynchronizedRaceData:
         try:
             log("SynchronizedRaceData.eventLoop crossmgr: %s" % (self.wsurl))
             ws = websocket.create_connection( self.wsurl )
+        except ConnectionRefusedError as e:
+            log("SynchronizedRaceData.eventLoop ConnectionRefusedError: %s" % (e))
+            time.sleep( 1 )
+            return
+        try:    
             #print('ws timeout: %s' % (ws.gettimeout()), file=sys.stderr)
             ws.settimeout(4)
             ws.send( json.dumps({'cmd':'send_baseline', 'raceName':'CurrentResults'}).encode() )
