@@ -18,19 +18,19 @@ from flask.logging import default_handler
 from .threadex import ThreadEx
 from .utils import log
 
-def get_host_info():
-    try:
-        host_name = socket.gethostname()
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('10.0.0.0', 0))
-        host_ip = s.getsockname()[0]
-        #host_ip = socket.gethostbyname(host_name)
-        host_info = '%s (%s)' % (host_name, host_ip)
-        log('get_host_info: host_info: %s' % host_info)
-        return host_info
-    except Exception as e:
-        log('get_host_info: Error: %s' % e)
-        return ''
+#def get_host_info():
+#    try:
+#        host_name = socket.gethostname()
+#        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#        s.connect(('10.0.0.0', 0))
+#        host_ip = s.getsockname()[0]
+#        #host_ip = socket.gethostbyname(host_name)
+#        host_info = '%s (%s)' % (host_name, host_ip)
+#        log('get_host_info: host_info: %s' % host_info)
+#        return host_info
+#    except Exception as e:
+#        log('get_host_info: Error: %s' % e)
+#        return ''
 
 
 class FlaskServer(ThreadEx):
@@ -42,7 +42,7 @@ class FlaskServer(ThreadEx):
     def __init__(self, stopEvent=None, webport=None, dataport=None ):
         super(FlaskServer, self).__init__(stopEvent=stopEvent, name='FlaskServer')
         self.app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-        self.hostInfo = get_host_info()
+        #self.hostInfo = get_host_info()
 
         self.dataport = dataport
         self.webport = webport
