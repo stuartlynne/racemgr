@@ -4,6 +4,7 @@ from queue import Queue
 import traceback
 import argparse
 import signal
+import platform
 from time import sleep
 
 from .threadex import ThreadEx
@@ -28,7 +29,7 @@ def raceMain():
 
 
     signal.signal(signal.SIGINT, lambda signal, frame: sigintHandler(signal, frame))
-    #log('RaceMgr version %s' % __version__)
+    log('RaceMgr version %s' % __version__)
     #while True:
     #    log('Sleeping 2')
     #    sleep(2)
@@ -59,9 +60,16 @@ def raceMain():
 
     [v.start() for v in threads]
 
-    log("Threads started, waiting for StopEvent")
     try:
-        StopEvent.wait()
+        log("platform.system: %s" % (platform.system()))
+        if platform.system() == "Linux":
+            log('StopEvent.wait')
+            StopEvent.wait()
+        else:
+            while not StopEvent.is_set():
+                log('Sleeping 2')
+                sleep(2)
+
     except KeyboardInterrupt:
         log("KeyboardInterrupt, stopping threads")
         pass
