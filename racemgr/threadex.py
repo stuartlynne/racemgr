@@ -22,6 +22,9 @@ class ThreadEx(Thread):
         sleep(1)
         pass
 
+    def finalize(self):
+        pass
+
     # Override this method in the subclass if needed
     # e.g. wssever.py
     def stop(self):
@@ -41,4 +44,5 @@ class ThreadEx(Thread):
                 log("Exception in thread: %s XXXXXXXXXXXXXX" % e,)
                 traceback.print_exc(file=sys.stderr)
                 break
+        self.finalize()
 

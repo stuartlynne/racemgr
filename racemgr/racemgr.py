@@ -38,8 +38,11 @@ def raceMain():
     parser.add_argument('--crossmgr', type=str, default='localhost', help='CrossMgr host')
     parser.add_argument('--port', type=int, default=11001, help='Flask port')
     parser.add_argument('--wsserver', type=int, default=11002, help='WSServer port')
+    parser.add_argument('--save', help='Save data to file', action='store_true')
+    parser.add_argument('--replay', type=str, default='', help='Replay data from')
 
     args = parser.parse_args()
+    print(args)
 
     StopEvent.clear()
     ClientQueue = Queue()
@@ -49,7 +52,8 @@ def raceMain():
     passings = Passings(stopEvent=StopEvent, clientQueue=ClientQueue)
     threads.append(passings)
 
-    threads.append(LiveThread(stopEvent=StopEvent, crossmgr=args.crossmgr, clientQueue=ClientQueue))
+    threads.append(LiveThread(stopEvent=StopEvent, crossmgr=args.crossmgr, clientQueue=ClientQueue, 
+                              save=args.save, replay=args.replay, ))
 
     wsserver = WSServer(stopEvent=StopEvent, port=args.wsserver, passings=passings, )
     passings.wsserver = wsserver
@@ -62,7 +66,7 @@ def raceMain():
 
     try:
         log("platform.system: %s" % (platform.system()))
-        if platform.system() == "Linux":
+        if False and platform.system() == "Linux":
             log('StopEvent.wait')
             StopEvent.wait()
         else:

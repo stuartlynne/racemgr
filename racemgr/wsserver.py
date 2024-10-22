@@ -20,15 +20,21 @@ class Passings(ThreadEx):
         self.wsserver = None
         self.passings = []
         self.clients = []
+        self.race_info = None
 
     # Send a client a message
     def sendClient(self, client, data):
-        log("Passings.sendClient client: %s data: %s" % (client, data))
+        log("wsserver.sendClient client: %s data: %s" % (client, data))
         self.wsserver.send_message(client, str(data))
 
     # Add a new client to the list, send all current data
     def new_client(self, client):
         self.clients.append(client)
+        log("Passings.new_client client: %ss" % client)
+        log("Passings.new_client race_info: %s" % self.race_info)
+        log("Passings.new_client passings: %s" % len(self.passings))
+        if self.race_info:
+            self.sendClient(client, self.race_info)
         for r in self.passings:
             self.sendClient(client, r)
 
@@ -50,8 +56,16 @@ class Passings(ThreadEx):
             dataType, data = message
             if dataType == 'baseline':
                 self.passings = []
-            elif dataType in ['recorded', 'race_time', ]:
-            #elif dataType in ['recorded', ]:
+                self.race_info = None
+            elif dataType in ['race_info', ]:
+                self.race_info = data
+                log('race_info: %s' % data)
+                for client in self.clients:
+                    self.sendClient(client, data)
+            elif dataType in ['race_time', ]:
+                for client in self.clients:
+                    self.sendClient(client, data)
+            elif dataType in ['recorded', ]:
                 self.passings.append(data)
                 for client in self.clients:
                     self.sendClient(client, data)

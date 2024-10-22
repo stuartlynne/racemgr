@@ -1,6 +1,7 @@
 import sys 
 import json
 import time
+from time import time, sleep
 import datetime
 import operator
 import websocket
@@ -68,6 +69,7 @@ def hhmmss( raceTime ):
     return '%02d:%02d' % (minutes, seconds % 60)
 
 def lap_position_str(lap_position):
+    #log('lap_position_str: %s' % (lap_position))
     if lap_position == 1:
         return 'LEADER'
     elif lap_position == 2:
@@ -75,24 +77,47 @@ def lap_position_str(lap_position):
     elif lap_position == 3:
         return '3rd'
     else:
-        return '%dth' % lap_position
+        return '%sth' % lap_position
 
 
 class SynchronizedRaceData:
-    def __init__( self, crossmgr='localhost', port=PORT_NUMBER, clientQueue=None, ):
+    def __init__( self, crossmgr='localhost', port=PORT_NUMBER, clientQueue=None, save=None, replay=None ):
         self.info = {}                    # Reference data accessed by bib number.
         self.categoryDetails = {}        # Category details accessed by category name.  Includes current position of all participats.
+
+        log('SynchronizedRaceData: crossmgr: %s save: %s' % (crossmgr, save))
+        self.save = save
+        self.replay = replay
         
         self.clientQueue = clientQueue
+        self.clientQueuePut('race_info', json.dumps({
+            "type": "definition",
+            "title": '',
+            # XXX
+            # "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
+            "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave', '#', ),
+        }))
         self.raceName = ''                # Name of current race.
         self.versionCount = -1            # Current version of the local race.
+
+        self.filename = None
+        self.jsonFile = None
+        if self.save:
+            self.filename = datetime.datetime.now().strftime('%Y%m%d_%H%M%S.json')
+            self.jsonFile = open(self.filename, 'w')
+            log('SynchronizedRaceData: save: %s' % (self.filename))
+
+        elif self.replay:
+            self.fd = open(replay)
+        self.lastTime = 0
+        self.replayCount = 0
 
         self.wsurl = 'ws://' + crossmgr + ':' + str(PORT_NUMBER) + '/'
 
         self.riderCategories = {}
         self.last_racetime = {}
-        self.passings = []
-        self.last_index = 0
+        #self.passings = []
+        self.recorded = {}
         self.keepalives = 0
 
         self.showFlag = False
@@ -118,12 +143,19 @@ class SynchronizedRaceData:
         self.timestamp = message['reference']['timestamp']
         self.tNow = message['reference']['tNow']
         self.curRaceTime = message['reference']['curRaceTime']
+        log('setRaceState: reset: %s' % (reset))
         if reset:
             self.riderCategories = {}
             self.last_racetime = {}
-            self.passings = []
-            self.last_index = -1
+            #self.passings = []
+            self.recorded = {}
             self.clientQueuePut('baseline', '')
+            self.clientQueuePut('race_info', json.dumps({
+                "type": "definition",
+                "title": self.raceName,
+                # "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
+                "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave', '', ),
+            }))
 
         #self.clientQueuePut('categoryDetails', self.categoryDetails.keys())
         for k, v in self.categoryDetails.items():
@@ -152,12 +184,14 @@ class SynchronizedRaceData:
     
     def processBaseline( self, message ):
         # XXX
+        log('processBaseline: %s' % (message.keys()))
         self.info = message['info']
         self.categoryDetails = message['categoryDetails']
         self.setRaceState( message, reset=True )
         self.baselinePending = False
     
     def processRAM( self, message ):
+        log('processRAM: %s' % (message.keys()))
         applyRAM( self.info, message['infoRAM'] )
         applyRAM( self.categoryDetails, message['categoryRAM'] )
         self.setRaceState( message, reset=False )
@@ -235,20 +269,33 @@ class SynchronizedRaceData:
             lap_position = lap_positions[raceCat][lap]
             
 
+            down = str(lap - leader_laps[raceCat]) if lap < leader_laps[raceCat] else ''
+            new_sorted_passings.append({
+                "type": "row",
+                'rowIndex' : None,
+                "row": [bib, lap_position, seconds, down, lap, name, raceCat, ],
+            })
+            log('generate_leaders: %s' % (new_sorted_passings[-1]))
+            continue
+
             tdstr = hhmmss(seconds)
 
             if firstFlag:
                 firstFlag = False
-                new_sorted_passings.append(json.dumps({
+                self.clientQueuePut('race_info', json.dumps({
                     "type": "definition",
                     "title": self.raceName,
-                    "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
+                    # "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
+                    "headers": ('', 'Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
                 }))
-            tdstr = hhmmss(seconds)
+            #tdstr = hhmmss(seconds)
             down = str(lap - leader_laps[raceCat]) if lap < leader_laps[raceCat] else ''
             new_sorted_passings.append(json.dumps({
                 "type": "row",
-                "row": [bib, lap_position_str(lap_position), tdstr, down, lap, name, raceCat, ],
+                'rowIndex' : None,
+                # XXX
+                # "row": [bib, lap_position_str(lap_position), seconds, down, lap, name, raceCat, ],
+                "row": [bib, lap_position_str(lap_position), seconds, down, lap, name, raceCat, index, ],
             }))
 
         return new_sorted_passings
@@ -303,20 +350,30 @@ class SynchronizedRaceData:
                     print(traceback.format_exc(), file=sys.stderr)
 
         sorted_passings = sorted(passings, key=lambda x: x[1])
-        sorted_passings = self.generate_leaders(sorted_passings)
+        final_sorted_passings = self.generate_leaders(sorted_passings)
         index = 0
         laps = 0
         position = 1
-        for passing in sorted_passings:
+        update = []
+        for index, passing in enumerate(final_sorted_passings):
 
-            log('passing: %s' % (str(passing)))
-            #bib, lap_position, tdstr, lap, down, name, raceCat = passing
+        
+            passing['rowIndex'] = index
+            passing['row'][1] = lap_position_str(passing['row'][1])
+            passing['row'][2] = hhmmss(passing['row'][2])
+            passing['row'].append(str(index))
 
-            if index > self.last_index:
-                self.clientQueuePut('recorded', passing)
-                self.last_index = index
-            index = index + 1
-            position += 1
+            if index in self.recorded and self.recorded[index] == passing:
+                continue
+            # XXX
+            # passing['row'][2] = hhmmss(passing['row'][2])
+            self.recorded[index] = passing
+            log('passing[%d]: %s' % (index, str(passing)))
+            update.append(json.dumps(passing))
+
+        for passing in update:
+            self.clientQueuePut('recorded', passing)
+
 
         return
 
@@ -335,6 +392,7 @@ class SynchronizedRaceData:
             print( 'Error decoding message: %s' % (e), file=sys.stderr )
             print( traceback.format_exc(), file=sys.stderr )
             return
+        print(json.dumps({'time': time(), 'data': message }), file=self.jsonFile )
 
         log('message: %s' % ({k: len(message[k]) for k in message.keys()}))
         summary = {}
@@ -389,11 +447,16 @@ class SynchronizedRaceData:
             print('onMessage: cmd not in message', file=sys.stderr)
             return
         
+        log('onMessage: cmd: %s' % (message['cmd']))
+        if message['cmd'] == 'reload_previous':
+            return
+        log('onMessage: reference: %s' % (message['reference']))
         if message['cmd'] == 'ram':
             if not self.baselinePending:
                 # If the versionCount or raceName is out of sync.  Request a full update.
                 if self.versionCount + 1 != message['reference']['versionCount'] or self.raceName != message['reference']['raceName']:
-                    ws.send( json.dumps({'cmd':'send_baseline', 'raceName':message['reference']['raceName']}).encode() )
+                    if ws:
+                        ws.send( json.dumps({'cmd':'send_baseline', 'raceName':message['reference']['raceName']}).encode() )
                     self.baselinePending = True    # Set flag to ignore incremental updates until we get the new baseline.
                 else:
                     # Otherwise, it is safe to apply this update.
@@ -414,7 +477,7 @@ class SynchronizedRaceData:
             ws = websocket.create_connection( self.wsurl )
         except ConnectionRefusedError as e:
             log("SynchronizedRaceData.eventLoop ConnectionRefusedError: %s" % (e))
-            time.sleep( 1 )
+            sleep( 1 )
             return
         try:    
             #print('ws timeout: %s' % (ws.gettimeout()), file=sys.stderr)
@@ -433,24 +496,69 @@ class SynchronizedRaceData:
             log("SynchronizedRaceData.eventLoop exception: %s" % (e))
             print(traceback.format_exc(), file=sys.stderr)
             #self.onException( e )
-            time.sleep( 1 )
+            sleep( 1 )
         finally:
             pass
-        
+
+    def doReplay(self, ):
+
+        log('doReplay: %s' % (self.replay))
+        if not self.fd:
+            sleep(2)
+        try:
+            line = self.fd.readline()
+            if not line:
+                self.fd = None
+                log('doReplay: EOF')
+                return
+        except:
+            self.fd = None;
+        #log('line: %s' % (line))
+        try:
+            onMessage = json.loads(line)
+        except Exception as e:
+            log('doReplay: %s' % (e))
+            log(traceback.format_exc())
+
+        log('onMessage: %s' % (str(onMessage.keys())))
+        log('onMessage[%s] %s' % (onMessage['time'], str(onMessage['data'].keys())))
+        log('[%5d] -------------------------------------------' % (self.replayCount))
+        log('onMessage: %s' % (onMessage))
+        log('')
+
+        curTime = onMessage['time']
+        if self.lastTime and curTime - self.lastTime > 1:
+            sleep((curTime - self.lastTime)/4)
+        self.lastTime = curTime
+        self.onMessage(None, json.dumps(onMessage['data']))
+        self.replayCount += 1
+
+
 
 class LiveThread( ThreadEx ):
-    def __init__( self, stopEvent=None, crossmgr='192.168.40.12', clientQueue=None, ):
+    def __init__( self, stopEvent=None, crossmgr='192.168.40.12', clientQueue=None, save=None, replay=None ):
 
         log("LiveThread.__init__ crossmgr: %s" % (crossmgr if crossmgr else "None"))
         self.crossmgr = crossmgr
         self.clientQueue = clientQueue
-        self.rd = SynchronizedRaceData(crossmgr=self.crossmgr, clientQueue=self.clientQueue)
+        self.save = save
+        self.replay = replay
+
+
+        self.rd = SynchronizedRaceData(crossmgr=self.crossmgr, clientQueue=self.clientQueue, save=save, replay=replay)
 
         super(LiveThread, self).__init__(stopEvent=stopEvent, name='LiveThread')
 
         
     def work( self ):
-        self.rd.eventLoop(stopEvent=self.stopEvent)
+        if self.replay:
+            self.rd.doReplay()
+        else:
+            self.rd.eventLoop(stopEvent=self.stopEvent, )
+
+    def finish( self ):
+        if self.jsonFile:
+            close(self.jsonFile)
 
 
 if __name__ == '__main__':
