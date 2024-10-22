@@ -5,113 +5,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Table</title>
     <style>
-        html, body {
-            height: 100%;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            font-family: Arial, sans-serif; /* Similar to Bootstrap's default font */
-        }
 
-        .container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* Prevent container from scrolling */
-            padding: 10px;
-        }
+    html, body {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        font-family: Arial, sans-serif; /* Similar to Bootstrap's default font */
+    }
 
-        #title-time-table {
-            position: sticky;
-            top: 0;
-            background-color: white;
-            width: 100%;
-            margin-bottom: 10px;
-            border-collapse: collapse;
-        }
+    .container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Prevent container from scrolling */
+        padding: 10px;
+    }
 
-        .table-container {
-            flex: 1;
-            width: 100%;
-            overflow-x: auto; /* Allow horizontal scrolling */
-            overflow-y: auto; /* Scroll only the data table body */
-        }
+    #title-time-table {
+        position: sticky;
+        top: 0;
+        background-color: white;
+        width: 100%;
+        margin-bottom: 10px;
+        border-collapse: collapse;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse; /* Ensure no spacing between table cells */
-            table-layout: auto; /* Responsive table layout */
-            margin-bottom: 10px;
-        }
+    .table-container {
+        flex: 1;
+        width: 100%;
+        overflow-x: auto; /* Allow horizontal scrolling */
+        overflow-y: auto; /* Scroll only the data table body */
+    }
 
-        th, td {
-            font-size: .8em;
-            text-align: center;
-            vertical-align: middle;
-            padding: 5px; /* Padding for readability */
-            border: 1px solid #ddd; /* Border color similar to Bootstrap */
-            box-sizing: border-box;
-        }
+    table {
+        width: 100%;
+        max-width: 100%; /* Make sure the table does not go beyond the screen width */
+        border-collapse: collapse; /* Ensure no spacing between table cells */
+        table-layout: fixed; /* Ensures all columns adjust their width to fit the table */
+        margin-bottom: 10px;
+    }
 
-        thead th {
-            background-color: #f8f9fa; /* Light background similar to Bootstrap */
-            font-weight: bold;
-            position: sticky;
-            top: 0;
-            z-index: 3; /* Ensure header is above body rows */
-        }
+    th, td {
+        font-size: .8em;
+        text-align: center;
+        vertical-align: middle;
+        padding: 5px; /* Padding for readability */
+        border: 1px solid #ddd; /* Border color similar to Bootstrap */
+        box-sizing: border-box;
+        word-wrap: break-word; /* Ensure words break within cells */
+        overflow: hidden; /* Prevent content from overflowing */
+    }
 
-        tbody tr:nth-child(even) {
-            background-color: #f2f2f2; /* Striped row effect */
-        }
+    thead th {
+        background-color: #f8f9fa; /* Light background similar to Bootstrap */
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 3; /* Ensure header is above body rows */
+    }
 
-        tbody tr:hover {
-            background-color: #ddd; /* Highlight row on hover */
-        }
+    tbody tr:nth-child(even) {
+        background-color: #f2f2f2; /* Striped row effect */
+    }
 
-        td.wrap-text {
-            white-space: normal;
-            word-wrap: break-word;
-        }
+    tbody tr:hover {
+        background-color: #ddd; /* Highlight row on hover */
+    }
 
-        /* Hide columns beyond the 4th */
-        .hide-columns td:nth-child(n+5),
-        .hide-columns th:nth-child(n+5) {
-            display: none;
-        }
+    td.wrap-text {
+        white-space: normal;
+        word-wrap: break-word;
+    }
 
-        /* Increased font size and bold for first 4 columns */
-        .larger-columns td, .larger-columns th {
-            font-size: .9em;
-        }
+    /* Hide columns beyond the 4th */
+    .hide-columns td:nth-child(n+5),
+    .hide-columns th:nth-child(n+5) {
+        display: none;
+    }
 
-        .larger-columns td:first-child {
-            font-weight: bold;
-            font-size: 1em;
-        }
+    /* Increased font size and bold for first 4 columns */
+    .larger-columns td, .larger-columns th {
+        font-size: .9em;
+    }
 
-        /* Title row styling */
-        #title-row td {
-            font-size: .9em;
-            font-weight: bold;
-        }
+    .larger-columns td:first-child {
+        font-weight: bold;
+        font-size: 1em;
+    }
 
-        /* Basic button styling */
-        .btn {
-            padding: 10px 15px;
-            border: none;
-            background-color: #007bff;
-            color: white;
-            text-align: center;
-            cursor: pointer;
-            font-size: 0.8em;
-            border-radius: 4px;
-            margin: 5px;
-        }
+    /* Title row styling */
+    #title-row td {
+        font-size: .9em;
+        font-weight: bold;
+    }
 
-        .btn:hover {
-            background-color: #0056b3;
-        }
+    /* Basic button styling */
+    .btn {
+        padding: 10px 15px;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        text-align: center;
+        cursor: pointer;
+        font-size: 0.8em;
+        border-radius: 4px;
+        margin: 5px;
+    }
+
+    .btn:hover {
+        background-color: #0056b3;
+    }
+
+
     </style>
 </head>
 <body>
@@ -180,18 +186,56 @@
         // Add click event listener to the title row to toggle columns
         titleRow.addEventListener('click', toggleColumns);
 
+        let lapsData = []; // Array to hold lap arrays
+        let currentLap = 0; // Track the highest lap observed
+
+        // Function to handle the passing data
+        function handlePassingData(row) {
+            const bibNumber = row[0]; // Rider's bib number
+            const lapNumber = parseInt(row[4], 10); // Rider's current lap
+
+            console.log('handlePassingData: currentLap: %s bibNumber: %s, lapNumber: %d', currentLap, bibNumber, lapNumber);
+
+            // Check if this is a new lap (higher than the currentLap)
+            if (lapNumber > currentLap) {
+                console.log('New lap detected: %d currentLap: %d', lapNumber, currentLap);
+                // Start a new lap array
+                currentLap = lapNumber;
+                lapsData.push([]);
+            }
+            else {
+                console.log('Not a new lap: %d currentLap: %d', lapNumber, currentLap);
+            }
+            console.log('Passings Data[%s] %s', currentLap, bibNumber);
+            console.dir(lapsData);
+            console.dir(lapsData[currentLap - 1]);
+
+            // Add the rider's bib number to the current lap array
+            lapsData[currentLap - 1].push(bibNumber); // Adjust for zero-indexing
+        }
+
+        // Function to clear lapsData and reset currentLap
+        function resetPassingData() {
+            lapsData = [];
+            currentLap = 0;
+        }
+
+
         // Function to connect WebSocket and handle reconnections
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
 
             // WebSocket message handler
             socket.onmessage = function(event) {
+                console.log('onmessage: data: %s', event.data);
                 const data = JSON.parse(event.data);
 
                 // Check if it's a table definition
                 if (data.type === 'definition') {
+                    console.log('Received table definition: clearing table and setting new headers.');
                     tableTitle.textContent = data.title;
                     tableBody.innerHTML = ''; // Clear the table body
+                    resetPassingData(); // Reset passing data
 
                     tableHeader.innerHTML = ''; // Set new header
                     data.headers.forEach(header => {
@@ -206,26 +250,48 @@
                     raceTime.textContent = data.time;
                 }
 
-                // Handle new table row data
+                // Handle new or updated table row data
                 if (data.type === 'row') {
-                    const tr = document.createElement('tr');
-                    data.row.forEach((cell, index) => {
-                        const td = document.createElement('td');
-                        if (index >= data.row.length - 2) {
-                            td.innerHTML = wrapText(cell); // Wrap text in last two cells
-                            td.classList.add('wrap-text');
-                        } else {
-                            td.textContent = cell;
-                        }
-                        tr.appendChild(td);
-                    });
-                    tableBody.appendChild(tr);
+                    handlePassingData(data.row); // Handle passing data
+                    //console.log('Received row data: ', data);
+                    const rowIndex = data.rowIndex;
+                    const existingRow = document.getElementById(`row-${rowIndex}`);
 
-                    // Auto-scroll to the bottom
+                    if (existingRow) {
+                        // Update the existing row
+                        data.row.forEach((cell, index) => {
+                            const td = existingRow.cells[index];
+                            if (index >= data.row.length - 2) {
+                                td.innerHTML = wrapText(cell); // Wrap text in last two cells
+                                td.classList.add('wrap-text');
+                            } else {
+                                td.textContent = cell;
+                            }
+                        });
+                    } else {
+                        // Insert a new row
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('id', `row-${rowIndex}`); // Set an ID for the row
+
+                        data.row.forEach((cell, index) => {
+                            const td = document.createElement('td');
+                            if (index >= data.row.length - 2) {
+                                td.innerHTML = wrapText(cell); // Wrap text in last two cells
+                                td.classList.add('wrap-text');
+                            } else {
+                                td.textContent = cell;
+                            }
+                            tr.appendChild(td);
+                        });
+                        tableBody.appendChild(tr);
+                    }
+
+                    // Auto-scroll to the bottom for new rows
                     const tableContainer = document.querySelector('.table-container');
                     tableContainer.scrollTop = tableContainer.scrollHeight;
                 }
             };
+
 
             // WebSocket error handler
             socket.onerror = function(error) {
