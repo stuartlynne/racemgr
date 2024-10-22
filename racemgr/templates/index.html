@@ -78,6 +78,16 @@
         word-wrap: break-word;
     }
 
+    @media (max-width: 600px) {
+    th, td {
+        font-size: 0.7em; /* Decrease font size on small screens */
+    }
+
+    #title-row td {
+        font-size: 0.8em; /* Adjust title font size on small screens */
+    }
+}
+
     /* Hide columns beyond the 4th */
     .hide-columns td:nth-child(n+5),
     .hide-columns th:nth-child(n+5) {
