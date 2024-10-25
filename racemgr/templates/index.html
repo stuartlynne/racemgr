@@ -5,160 +5,237 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebSocket Table</title>
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent the page from scrolling */
+        }
 
-    html, body {
-        height: 100%;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        font-family: Arial, sans-serif; /* Similar to Bootstrap's default font */
-    }
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
 
-    .container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden; /* Prevent container from scrolling */
-        padding: 10px;
-    }
+        /* Divs for swipe detection */
+        .left-div, .right-div {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+            overflow: hidden;
+        }
 
-    #title-time-table {
-        position: sticky;
-        top: 0;
-        background-color: white;
-        width: 100%;
-        margin-bottom: 10px;
-        border-collapse: collapse;
-    }
+        .left-div {
+            display: block; /* Show left div by default */
+        }
 
-    .table-container {
-        flex: 1;
-        width: 100%;
-        overflow-x: auto; /* Allow horizontal scrolling */
-        overflow-y: auto; /* Scroll only the data table body */
-    }
+        .right-div {
+            background-color: lightgreen;
+        }
 
-    table {
-        width: 100%;
-        max-width: 100%; /* Make sure the table does not go beyond the screen width */
-        border-collapse: collapse; /* Ensure no spacing between table cells */
-        table-layout: fixed; /* Ensures all columns adjust their width to fit the table */
-        margin-bottom: 10px;
-    }
+        /* Table and scroll container */
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            height: calc(100% - 70px); /* Adjust the height to ensure full container usage */
+            -webkit-overflow-scrolling: touch; /* Enable smooth scrolling for iOS */
+        }
 
-    th, td {
-        font-size: .8em;
-        text-align: center;
-        vertical-align: middle;
-        padding: 5px; /* Padding for readability */
-        border: 1px solid #ddd; /* Border color similar to Bootstrap */
-        box-sizing: border-box;
-        word-wrap: break-word; /* Ensure words break within cells */
-        overflow: hidden; /* Prevent content from overflowing */
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse; /* Ensure no spacing between table cells */
+            margin-bottom: 10px;
+        }
 
-    thead th {
-        background-color: #f8f9fa; /* Light background similar to Bootstrap */
-        font-weight: bold;
-        position: sticky;
-        top: 0;
-        z-index: 3; /* Ensure header is above body rows */
-    }
+        th, td {
+            font-size: .8em;
+            text-align: center;
+            vertical-align: middle;
+            padding: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
 
-    tbody tr:nth-child(even) {
-        background-color: #f2f2f2; /* Striped row effect */
-    }
+        /* Sticky title row */
+        #title-row td {
+            font-size: .9em;
+            font-weight: bold;
+            background-color: white;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
 
-    tbody tr:hover {
-        background-color: #ddd; /* Highlight row on hover */
-    }
+        /* Sticky header for the table */
+        #table-header th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            /*top: 40px;*/ /* Aligns header row with the bottom of the title row */
+            top: 0px;
+            z-index: 4;
+        }
 
-    td.wrap-text {
-        white-space: normal;
-        word-wrap: break-word;
-    }
+        tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
 
-    @media (max-width: 600px) {
-    th, td {
-        font-size: 0.7em; /* Decrease font size on small screens */
-    }
+        tbody tr:hover {
+            background-color: #ddd;
+        }
 
-    #title-row td {
-        font-size: 0.8em; /* Adjust title font size on small screens */
-    }
-}
+        td.wrap-text {
+            white-space: normal;
+            word-wrap: break-word;
+        }
 
-    /* Hide columns beyond the 4th */
-    .hide-columns td:nth-child(n+5),
-    .hide-columns th:nth-child(n+5) {
-        display: none;
-    }
+        @media (max-width: 600px) {
+            th, td {
+                font-size: 0.7em;
+            }
 
-    /* Increased font size and bold for first 4 columns */
-    .larger-columns td, .larger-columns th {
-        font-size: .9em;
-    }
+            #title-row td {
+                font-size: 0.8em;
+            }
+        }
 
-    .larger-columns td:first-child {
-        font-weight: bold;
-        font-size: 1em;
-    }
+        /* Hide columns beyond the 4th */
+        .hide-columns td:nth-child(n+5),
+        .hide-columns th:nth-child(n+5) {
+            display: none;
+        }
 
-    /* Title row styling */
-    #title-row td {
-        font-size: .9em;
-        font-weight: bold;
-    }
+        /* Increased font size and bold for first 4 columns */
+        .larger-columns td, .larger-columns th {
+            font-size: .9em;
+        }
 
-    /* Basic button styling */
-    .btn {
-        padding: 10px 15px;
-        border: none;
-        background-color: #007bff;
-        color: white;
-        text-align: center;
-        cursor: pointer;
-        font-size: 0.8em;
-        border-radius: 4px;
-        margin: 5px;
-    }
-
-    .btn:hover {
-        background-color: #0056b3;
-    }
-
-
+        .larger-columns td:first-child {
+            font-weight: bold;
+            font-size: 1em;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Title and Race Time Table (pinned at the top) -->
-        <table id="title-time-table">
-            <thead>
-                <tr id="title-row">
-                    <td id="race-title" colspan="3">Race Title Here</td>
-                    <td id="race-time">00:00:00</td>
-                </tr>
-            </thead>
-        </table>
-
-        <!-- Main Data Table (scrollable within available space) -->
-        <div class="table-container">
-            <table id="data-table">
+    <!-- Left div containing the main race table -->
+    <div class="left-div">
+        <div class="container">
+            <!-- Title and Race Time Table (pinned at the top) -->
+            <table id="title-time-table">
                 <thead>
-                    <tr id="table-header">
-                        <!-- Table header will be populated by WebSocket -->
+                    <tr id="title-row">
+                        <td id="race-title" colspan="3">Race Title Here</td>
+                        <td id="race-time">00:00:00</td>
                     </tr>
                 </thead>
-                <tbody id="table-body">
-                    <!-- Table body will be populated by WebSocket -->
-                </tbody>
             </table>
+
+            <!-- Main Data Table (scrollable within available space) -->
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr id="table-header">
+                            <!-- Table header will be populated by WebSocket -->
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Table body will be populated by WebSocket -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right div containing the passing table -->
+    <div class="right-div">
+        <div class="container">
+            <h1>Passing Table</h1>
+            <div class="table-container">
+                <table id="passing-table">
+                    <thead></thead>
+                    <tbody id="passing-body">
+                        <!-- Passing data will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        const wsUrl = `ws://${window.location.hostname}:{{ws_port}}/ws`; // WebSocket URL with dynamic port
+        let currentView = 'left'; // Track current visible div
+        const leftDiv = document.querySelector('.left-div');
+        const rightDiv = document.querySelector('.right-div');
+
+        let startX = 0;
+
+        // Handle touch start
+        document.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+        });
+
+        // Handle touch move
+        document.addEventListener('touchmove', function(e) {
+            const touchX = e.touches[0].clientX;
+            const diffX = touchX - startX;
+
+            // Only prevent default on horizontal swipes
+            if (Math.abs(diffX) > 50) {
+                e.preventDefault(); // Prevent default if horizontal swipe
+            }
+        }, { passive: false });
+
+        // Handle touch end
+        if (false) {
+            document.addEventListener('touchend', function(e) {
+                const endX = e.changedTouches[0].clientX;
+                const diffX = endX - startX;
+
+                // Swipe left (negative diffX) to show right div
+                if (diffX < -50 && currentView === 'left') {
+                    leftDiv.style.display = 'none';
+                    rightDiv.style.display = 'block';
+                    currentView = 'right';
+                }
+
+                // Swipe right (positive diffX) to show left div
+                if (diffX > 50 && currentView === 'right') {
+                    rightDiv.style.display = 'none';
+                    leftDiv.style.display = 'block';
+                    currentView = 'left';
+                }
+            });
+        }
+
+        //const wsUrl = `ws://${window.location.hostname}:{{ws_port}}/ws`; // WebSocket URL with dynamic port
+
+
+        let wsUrl;
+
+        if (window.location.protocol === 'https:') {
+            // HTTPS: Construct wss:// URL by replacing the hostname
+            let hostnameParts = window.location.hostname.split('.');
+            hostnameParts[0] = '11002'; // Replace the leading component with '11002'
+            let newHostname = hostnameParts.join('.');
+            wsUrl = `wss://${newHostname}/ws`; // Use default port 443 for HTTPS
+
+        } else if (window.location.protocol === 'http:') {
+            // HTTP: Construct ws:// URL with port from {{ws_port}}
+            wsUrl = `ws://${window.location.hostname}:{{ws_port}}/ws`; // Dynamic port for local testing
+        }
+        console.log('WebSocket URL: ', wsUrl);
+        console.log('window.location: %s', window.location);
+        console.dir(window.location);
         let socket;
         let reconnectDelay = 1000; // Start with a 1-second delay between reconnection attempts
         let showAllColumns = false; // Track toggle state, start by showing only 4 columns
@@ -169,6 +246,8 @@
         const tableBody = document.getElementById('table-body');
         const titleRow = document.getElementById('title-row');
         const dataTable = document.getElementById('data-table');
+        const passingTable = document.getElementById('passing-table');
+        const passingBody = document.getElementById('passing-body');
 
         // Function to wrap text at commas or spaces
         function wrapText(text) {
@@ -196,40 +275,46 @@
         // Add click event listener to the title row to toggle columns
         titleRow.addEventListener('click', toggleColumns);
 
-        let lapsData = []; // Array to hold lap arrays
-        let currentLap = 0; // Track the highest lap observed
+        // Function to handle the passing data and update the table
+        function handlePassingData(rowData) {
+            const bibNumber = rowData.row[0]; // Rider's bib number
+            const lapNumber = rowData.overall[0]; // Lap number (column)
+            const rowPosition = rowData.overall[1]; // Row position (row)
 
-        // Function to handle the passing data
-        function handlePassingData(row) {
-            const bibNumber = row[0]; // Rider's bib number
-            const lapNumber = parseInt(row[4], 10); // Rider's current lap
+            console.log(`handlePassingData: OVERALL[${bibNumber}] ${lapNumber}:${rowPosition}`);
 
-            console.log('handlePassingData: currentLap: %s bibNumber: %s, lapNumber: %d', currentLap, bibNumber, lapNumber);
+            // Ensure the table has enough rows and columns for this data
+            ensureTableSize(rowPosition, lapNumber);
 
-            // Check if this is a new lap (higher than the currentLap)
-            if (lapNumber > currentLap) {
-                console.log('New lap detected: %d currentLap: %d', lapNumber, currentLap);
-                // Start a new lap array
-                currentLap = lapNumber;
-                lapsData.push([]);
-            }
-            else {
-                console.log('Not a new lap: %d currentLap: %d', lapNumber, currentLap);
-            }
-            console.log('Passings Data[%s] %s', currentLap, bibNumber);
-            console.dir(lapsData);
-            console.dir(lapsData[currentLap - 1]);
-
-            // Add the rider's bib number to the current lap array
-            lapsData[currentLap - 1].push(bibNumber); // Adjust for zero-indexing
+            // Set the bib number in the appropriate cell
+            setPassingTableCell(lapNumber, rowPosition, bibNumber);
         }
 
-        // Function to clear lapsData and reset currentLap
-        function resetPassingData() {
-            lapsData = [];
-            currentLap = 0;
+        // Function to ensure the table has enough rows and columns
+        function ensureTableSize(requiredRow, requiredColumn) {
+            // Ensure enough rows exist
+            while (passingBody.rows.length < requiredRow) {
+                const newRow = document.createElement('tr');
+                passingBody.appendChild(newRow);
+            }
+
+            // Ensure each row has enough columns
+            for (let rowIndex = 0; rowIndex < passingBody.rows.length; rowIndex++) {
+                const row = passingBody.rows[rowIndex];
+                while (row.cells.length < requiredColumn) {
+                    const emptyCell = document.createElement('td');
+                    emptyCell.textContent = ''; // Empty cell by default
+                    row.appendChild(emptyCell);
+                }
+            }
         }
 
+        // Function to set a specific cell in the passing table
+        function setPassingTableCell(lapNumber, rowPosition, bibNumber) {
+            const row = passingBody.rows[rowPosition - 1]; // Adjust for zero-indexing
+            const cell = row.cells[lapNumber - 1]; // Adjust for zero-indexing
+            cell.textContent = bibNumber; // Set the bib number
+        }
 
         // Function to connect WebSocket and handle reconnections
         function connectWebSocket() {
@@ -237,15 +322,13 @@
 
             // WebSocket message handler
             socket.onmessage = function(event) {
-                console.log('onmessage: data: %s', event.data);
                 const data = JSON.parse(event.data);
 
                 // Check if it's a table definition
                 if (data.type === 'definition') {
-                    console.log('Received table definition: clearing table and setting new headers.');
                     tableTitle.textContent = data.title;
                     tableBody.innerHTML = ''; // Clear the table body
-                    resetPassingData(); // Reset passing data
+                    passingBody.innerHTML = ''; // Clear the table body
 
                     tableHeader.innerHTML = ''; // Set new header
                     data.headers.forEach(header => {
@@ -262,13 +345,11 @@
 
                 // Handle new or updated table row data
                 if (data.type === 'row') {
-                    handlePassingData(data.row); // Handle passing data
-                    //console.log('Received row data: ', data);
+                    handlePassingData(data); // Handle passing data
                     const rowIndex = data.rowIndex;
                     const existingRow = document.getElementById(`row-${rowIndex}`);
 
                     if (existingRow) {
-                        // Update the existing row
                         data.row.forEach((cell, index) => {
                             const td = existingRow.cells[index];
                             if (index >= data.row.length - 2) {
@@ -279,14 +360,13 @@
                             }
                         });
                     } else {
-                        // Insert a new row
                         const tr = document.createElement('tr');
-                        tr.setAttribute('id', `row-${rowIndex}`); // Set an ID for the row
+                        tr.setAttribute('id', `row-${rowIndex}`);
 
                         data.row.forEach((cell, index) => {
                             const td = document.createElement('td');
                             if (index >= data.row.length - 2) {
-                                td.innerHTML = wrapText(cell); // Wrap text in last two cells
+                                td.innerHTML = wrapText(cell);
                                 td.classList.add('wrap-text');
                             } else {
                                 td.textContent = cell;
@@ -296,38 +376,29 @@
                         tableBody.appendChild(tr);
                     }
 
-                    // Auto-scroll to the bottom for new rows
                     const tableContainer = document.querySelector('.table-container');
                     tableContainer.scrollTop = tableContainer.scrollHeight;
                 }
             };
 
-
-            // WebSocket error handler
             socket.onerror = function(error) {
                 console.error('WebSocket Error: ', error);
             };
 
-            // WebSocket connection closed, try to reconnect
             socket.onclose = function(event) {
-                console.log('WebSocket closed. Attempting to reconnect in ' + reconnectDelay / 1000 + ' seconds.');
-                setTimeout(connectWebSocket, reconnectDelay); // Reconnect after delay
-                reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Exponentially increase delay, max 30 seconds
+                setTimeout(connectWebSocket, reconnectDelay);
+                reconnectDelay = Math.min(reconnectDelay * 2, 10000);
             };
 
-            // Reset reconnect delay on successful connection
             socket.onopen = function() {
-                console.log('WebSocket connected.');
-                reconnectDelay = 1000; // Reset the delay on successful connection
+                reconnectDelay = 1000;
             };
         }
 
-        // Close WebSocket connection when the page unloads
         window.onbeforeunload = function() {
             socket.close();
         };
 
-        // Initialize columns when the page loads
         window.onload = function() {
             initializeColumns();
             connectWebSocket();

@@ -100,6 +100,8 @@ class SynchronizedRaceData:
         self.raceName = ''                # Name of current race.
         self.versionCount = -1            # Current version of the local race.
 
+        #self.writer = csv.writer
+
         self.filename = None
         self.jsonFile = None
         if self.save:
@@ -199,12 +201,12 @@ class SynchronizedRaceData:
     def printTop( self ):
         # Example "do something" with the results.
         showTop = 5
-        print( '********* Top {} Leaders ********* {}'.format(showTop, datetime.datetime.now()), file=sys.stderr )
+        #print( '********* Top {} Leaders ********* {}'.format(showTop, datetime.datetime.now()), file=sys.stderr )
         # Sort the categoryDetails by "iSort" so they come out in the same order as CrossMgr.
         for cat in sorted( self.categoryDetails.values(), key=operator.itemgetter('iSort') ):
             if cat['iSort'] == 0:    # Ignore the 'All' category has iSort=0.
                 continue
-            print( cat['name'], file=sys.stderr )
+            #print( cat['name'], file=sys.stderr )
             for rank, bib in enumerate(cat['pos'][:showTop], 1):
                 # Get the reference information for this bib number.
                 r = self.info.get(str(bib), {})    # Access as a string, not an integer.
@@ -230,17 +232,22 @@ class SynchronizedRaceData:
     #print(find_last_true(boolean_array))  # Output: 3
 
 
-    def generate_leaders(self, sorted_passings):
-        leaders = {}
-        leader_laps = {}
+    def generate_leaders(self, sorted_records):
+        #leaders = {'All': []}
+        leader_laps = {'All': 0}
         lap_counts = {}
-        lap_positions = {}
-        new_sorted_passings = []
+        lap_positions = {'All': {}}
+        new_sorted_records = []
         firstFlag = True
-        for index, (bib, seconds, name, lap, raceCat) in enumerate(sorted_passings):
+        leader_lap = 0
+        all_lap = 0
+        log('overall--------------------' )
+        for index, (bib, seconds, name, lap, raceCat) in enumerate(sorted_records):
 
-            if raceCat not in leaders:
-                leaders[raceCat] = []
+            log('generate_leaders[%d]: leader_laps:%s   %s lap:%s s:%s %s  %s' % (index, leader_laps['All'], bib, lap, round(seconds,2), name, raceCat))    
+
+            #if raceCat not in leaders:
+            #    leaders[raceCat] = []
 
             if raceCat not in leader_laps:
                 leader_laps[raceCat] = 0
@@ -255,50 +262,45 @@ class SynchronizedRaceData:
 
             lap_counts[bib] += 1
             if lap != lap_counts[bib]:
-                print("Lap mismatch: %d != %d" % (lap, lap_counts[bib]), file=sys.stderr)
+                log("generate_leaders[%d]: Lap mismatch: %d != %d" % (index, lap, lap_counts[bib]), file=sys.stderr)
                 continue
 
             leaderFlag = False
-            if lap > len(leaders[raceCat]):
-                leaders[raceCat].append((bib, seconds, lap))
+            all_lap = lap
+            if lap > leader_laps['All']:
+                log('generate_leaders[%d] lap > len(leader_laps[All]): %s:%s' % (index, lap, leader_laps['All']))
+                #leaders['All'].append(bib)
+                leader_laps['All'] = lap
+                lap_positions['All'][all_lap] = 1
+            else:
+                lap_positions['All'][all_lap] += 1
+
+            if lap > leader_laps[raceCat]:
+                #leaders[raceCat].append((bib, seconds, lap))
                 leader_laps[raceCat] = lap
                 leaderFlag = True
                 lap_positions[raceCat][lap] = 1
             else:
                 lap_positions[raceCat][lap] += 1
-            lap_position = lap_positions[raceCat][lap]
-            
+
+            #all_lap = len(leaders['All'])
+            all_lap_position = lap_positions['All'][all_lap]
+            cat_lap_position = lap_positions[raceCat][lap]
 
             down = str(lap - leader_laps[raceCat]) if lap < leader_laps[raceCat] else ''
-            new_sorted_passings.append({
+            new_sorted_records.append({
                 "type": "row",
                 'rowIndex' : None,
-                "row": [bib, lap_position, seconds, down, lap, name, raceCat, ],
+                'overall': (all_lap, all_lap_position),
+                "row": [bib, cat_lap_position, seconds, down, lap, name, raceCat, ],
             })
-            log('generate_leaders: %s' % (new_sorted_passings[-1]))
+            log('generate_leaders: %s' % (new_sorted_records[-1]))
+            #log('generate_leaders[%d]: leader_laps:%s   %s lap:%s s:%s %s  %s' % (index, leader_laps['All'], bib, lap, round(seconds,2), name, raceCat))    
+            log('OVERALL[%s] %s leader_laps:%s %s: %s:%s' % (index, seconds, leader_laps['All'], bib, all_lap, all_lap_position))
             continue
 
-            tdstr = hhmmss(seconds)
 
-            if firstFlag:
-                firstFlag = False
-                self.clientQueuePut('race_info', json.dumps({
-                    "type": "definition",
-                    "title": self.raceName,
-                    # "headers": ('Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
-                    "headers": ('', 'Bib', 'Note', 'Time', 'Gap', 'Lap', 'Name', 'Wave' ),
-                }))
-            #tdstr = hhmmss(seconds)
-            down = str(lap - leader_laps[raceCat]) if lap < leader_laps[raceCat] else ''
-            new_sorted_passings.append(json.dumps({
-                "type": "row",
-                'rowIndex' : None,
-                # XXX
-                # "row": [bib, lap_position_str(lap_position), seconds, down, lap, name, raceCat, ],
-                "row": [bib, lap_position_str(lap_position), seconds, down, lap, name, raceCat, index, ],
-            }))
-
-        return new_sorted_passings
+        return new_sorted_records
 
     # Example input
     #sorted_race_times = [
@@ -320,7 +322,7 @@ class SynchronizedRaceData:
         #print('-------------------', file=sys.stderr)
         #print('categoryDetails: %s' % (self.categoryDetails), file=sys.stderr)
         #return
-        passings = []
+        recorded = []
         for bib, data in self.info.items():
             #print('bib: %s data: %s' % (bib, data), file=sys.stderr)
             if data['status'] != 'Finisher':
@@ -344,18 +346,18 @@ class SynchronizedRaceData:
             for lap in range(1, last_interp + 1, 1):
                 #raceCat = self.riderCategories[bib]
                 try:
-                    passings.append((bib, raceTimes[lap], name, lap, self.riderCategories[str(bib)]))
+                    recorded.append((bib, raceTimes[lap], name, lap, self.riderCategories[str(bib)]))
                 except Exception as e:
                     log('error: %s' % (e))
                     print(traceback.format_exc(), file=sys.stderr)
 
-        sorted_passings = sorted(passings, key=lambda x: x[1])
-        final_sorted_passings = self.generate_leaders(sorted_passings)
+        sorted_records = sorted(recorded, key=lambda x: x[1])
+        final_sorted_records = self.generate_leaders(sorted_records)
         index = 0
         laps = 0
         position = 1
         update = []
-        for index, passing in enumerate(final_sorted_passings):
+        for index, passing in enumerate(final_sorted_records):
 
         
             passing['rowIndex'] = index
@@ -447,10 +449,10 @@ class SynchronizedRaceData:
             print('onMessage: cmd not in message', file=sys.stderr)
             return
         
-        log('onMessage: cmd: %s' % (message['cmd']))
+        #log('onMessage: cmd: %s' % (message['cmd']))
         if message['cmd'] == 'reload_previous':
             return
-        log('onMessage: reference: %s' % (message['reference']))
+        #log('onMessage: reference: %s' % (message['reference']))
         if message['cmd'] == 'ram':
             if not self.baselinePending:
                 # If the versionCount or raceName is out of sync.  Request a full update.
@@ -519,11 +521,12 @@ class SynchronizedRaceData:
         except Exception as e:
             log('doReplay: %s' % (e))
             log(traceback.format_exc())
+            return
 
         log('onMessage: %s' % (str(onMessage.keys())))
         log('onMessage[%s] %s' % (onMessage['time'], str(onMessage['data'].keys())))
         log('[%5d] -------------------------------------------' % (self.replayCount))
-        log('onMessage: %s' % (onMessage))
+        #log('onMessage: %s' % (onMessage))
         log('')
 
         curTime = onMessage['time']
