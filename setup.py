@@ -19,14 +19,16 @@ with open("README.md", "rb") as f:
     long_descr = f.read().decode("utf-8")
 
 setup(
-    name = "startlist",
+    name = "racemgr",
     packages = ["racemgr",],
     #install_requires = [ "psycopg2", "yattag", "openpyxl", ],
-    install_requires = [ "flask", "websocket_server", "websocket-client", ]
+    install_requires = [ "flask", "websocket_server", "websocket-client", "werkzeug", ],
     entry_points = {
         "console_scripts": ['racemgr = racemgr.racemgr:raceMain'],
         },
-    package_data = { },
+    package_data = { 
+        'racemgr': ['templates/*',],
+        },
     version = version,
     description = "CrossMgr Web Pages",
     long_description = long_descr,
