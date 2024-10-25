@@ -15,7 +15,7 @@ from .flaskserver import FlaskServer
 from .utils import log
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 
 
 StopEvent = Event()
@@ -30,6 +30,7 @@ def raceMain():
 
     signal.signal(signal.SIGINT, lambda signal, frame: sigintHandler(signal, frame))
     log('RaceMgr version %s' % __version__)
+    #exit()
     #while True:
     #    log('Sleeping 2')
     #    sleep(2)

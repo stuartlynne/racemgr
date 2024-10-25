@@ -56,6 +56,6 @@ setup(
     long_description=long_descr,
     author="Stuart Lynne",
     author_email="stuart.lynne@gmail.com",
-    url="http://bitbucket.org/stuartlynne/qlmux_proxy",
+    url="http://bitbucket.org/stuartlynne/racemgr",
 )
 

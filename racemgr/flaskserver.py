@@ -14,6 +14,7 @@ from werkzeug.serving import make_server
 from flask import Flask, render_template, render_template_string, Response, request
 import logging
 from flask.logging import default_handler
+import pkg_resources
 
 from .threadex import ThreadEx
 from .utils import log
@@ -36,12 +37,22 @@ from .utils import log
 class FlaskServer(ThreadEx):
     #app1 = Flask(__name__)
 
-    def index(self):
+    def x_index(self):
         return render_template('index.html', ws_port=self.dataport)
+
+    def index():
+        template_path = pkg_resources.resource_filename('racemgr', 'templates/index.html')
+        with open(template_path) as f:
+            template_content = f.read()
+        return render_template_string(template_content)
 
     def __init__(self, stopEvent=None, webport=None, dataport=None ):
         super(FlaskServer, self).__init__(stopEvent=stopEvent, name='FlaskServer')
         self.app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+
+        log("FLASK: Template paths: %s" % self.app.jinja_loader.searchpath)
+ 
+
         #self.hostInfo = get_host_info()
 
         self.dataport = dataport
