@@ -18,21 +18,44 @@ version = re.search(
 with open("README.md", "rb") as f:
     long_descr = f.read().decode("utf-8")
 
+
+#setup(
+#    name = "racemgr",
+#    packages = ["racemgr",],
+#    #install_requires = [ "psycopg2", "yattag", "openpyxl", ],
+#    install_requires = [ "flask", "websocket_server", "websocket-client", "werkzeug", ],
+#    entry_points = {
+#        "console_scripts": ['racemgr = racemgr.racemgr:raceMain'],
+#        },
+#    package_data = { 
+#        'racemgr': ['templates/*',],
+#        },
+#    version = version,
+#    description = "CrossMgr Web Pages",
+#    long_description = long_descr,
+#    author = "Stuart Lynne",
+#    author_email = "stuart.lynne@gmail.com",
+#    url = "http://bitbucket.org/stuartlynne/qlmux_proxy",
+#    )
+
+from setuptools import setup, find_packages
+
 setup(
-    name = "racemgr",
-    packages = ["racemgr",],
-    #install_requires = [ "psycopg2", "yattag", "openpyxl", ],
-    install_requires = [ "flask", "websocket_server", "websocket-client", "werkzeug", ],
-    entry_points = {
+    name="racemgr",
+    packages=find_packages(),
+    install_requires=["flask", "websocket_server", "websocket-client", "werkzeug"],
+    entry_points={
         "console_scripts": ['racemgr = racemgr.racemgr:raceMain'],
-        },
-    package_data = { 
-        'racemgr': ['templates/*',],
-        },
-    version = version,
-    description = "CrossMgr Web Pages",
-    long_description = long_descr,
-    author = "Stuart Lynne",
-    author_email = "stuart.lynne@gmail.com",
-    url = "http://bitbucket.org/stuartlynne/qlmux_proxy",
-    )
+    },
+    package_data={
+        'racemgr': ['templates/*'],
+    },
+    include_package_data=True,
+    version=version,
+    description="CrossMgr Web Pages",
+    long_description=long_descr,
+    author="Stuart Lynne",
+    author_email="stuart.lynne@gmail.com",
+    url="http://bitbucket.org/stuartlynne/qlmux_proxy",
+)
+
